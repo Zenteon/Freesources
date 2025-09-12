@@ -1,13 +1,13 @@
 /*
     The brdf is made up of two lobes, the first one starts off fully lambertian before flattening
-    in the center and showing retroreflection around the edges
+    in the center and showing retroreflection around the edges (and in the reciprocal case, brightening in areas ndl is low)
     
     The second lobe handles multiscattering. It assumes that 50% of the initial light that makes it past
     the first lobe is reflected directly before scattering light, with 50% escaping each time.
     
     At higher roughnesses this second lobe is much more prominent, and the 50% multiscatter means
     that it's highly dynamic in response to albedo color, with white albedos passing the white furnace
-    test almost perfectly, and very dark albedos being significantly darker than single scatter Oren Nayar
+    test almost perfectly, and very dark albedos being darker than single scatter Oren Nayar
     
     I have decided to name it Oren-Ibar, as both a pun on my name and the Oren Nayar BRDF
 */
@@ -28,19 +28,12 @@ vec3 OrenIbar(float ndl, float ndv, float r, vec3 alb)
     r = max(r*r,0.001);
  
     //Primary diffuse term
-    vec2 ab = vec2(0.25+0.2*r,0.25) / r;
+    vec2 ab = vec2(0.25+0.28*r,0.25) / r;
     vec2 f = ab.x*LV / (ab.y+LV);
-    float OI_S = f.x*f.y / LV.y;
-    
-    //Secondary flattened diffuse term for multiscattering
-    float LM = (1.0-LV.x);
-    LM *= LM;
-    LM *= LM;
-    LM = 0.54 * (1.0 - LM*LM*LM);
+    float OI_S = f.x*f.x*f.y / (LV.y*LV.x);
     
     //Multiscattering
-    float OI_MS = LM*OI_MS_Approx(ndv,r);
-    vec3 MS = OI_MS * (0.5+0.25*alb / (1.0 - 0.5*alb));
+    vec3 OI_MS = LV.x*OI_MS_Approx(ndv,r) * (0.5+0.25*alb / (1.0 - 0.5*alb));
     
-    return OI_S+MS;
+    return OI_S+OI_MS;
 }
