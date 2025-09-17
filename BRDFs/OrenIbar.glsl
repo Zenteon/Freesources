@@ -28,12 +28,13 @@ vec3 OrenIbar(float ndl, float ndv, float r, vec3 alb)
     r = max(r*r,0.001);
  
     //Primary diffuse term
-    vec2 ab = vec2(0.25+0.28*r,0.25) / r;
+    vec2 ab = vec2(0.25+0.2*r,0.25) / r;
     vec2 f = ab.x*LV / (ab.y+LV);
-    float OI_S = f.x*f.x*f.y / (LV.y*LV.x);
+    float OI_S = LV.x*f.x*f.y / (LV.x*LV.y);
     
-    //Multiscattering
-    vec3 OI_MS = LV.x*OI_MS_Approx(ndv,r) * (0.5+0.25*alb / (1.0 - 0.5*alb));
+    //Multiscattering, approximate SSS baked in
+    float ML = 0.83 * LV.x / (0.25 + LV.x); 
+    vec3 OI_MS = ML*OI_MS_Approx(ndv,r) * (0.5+0.5*alb / (2.0 - alb));
     
-    return OI_S+OI_MS;
+    return OI_S + OI_MS;
 }
