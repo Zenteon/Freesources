@@ -1,8 +1,7 @@
 /*
-    The brdf is made up of two lobes, the first one starts off fully lambertian before flattening
-    in the center and showing retroreflection around the edges (and in the reciprocal case, brightening in areas ndl is low)
+    The brdf is made up of two lobes, the first one starts off fully lambertian before flattening to scatter mostly perpendicular to the macro normal
     
-    The second lobe handles multiscattering. It assumes that 50% of the initial light that makes it past
+    The second lobe handles multiscattering and retroreflection. It assumes that 50% of the initial light that makes it past
     the first lobe is reflected directly before scattering light, with 50% escaping each time.
     
     At higher roughnesses this second lobe is much more prominent, and the 50% multiscatter means
@@ -16,25 +15,26 @@
 //Curve fit for multiscattering term, this was calaulated numerically before being fit empirically.
 float OI_MS_Approx(float ndv, float r)
 {
-    float t = 0.05+ 4.0*ndv;
+    float t = 0.0 + 8.0*ndv;
     float b = 1.0 / (t+1.0);
-    r = 1.25*r / (0.25+r);
+    r = 1.125*r / (0.125+r);
     return 1.0 - mix(1.0,b,r);
 }
 
-vec3 OrenIbar(float ndl, float ndv, float r, vec3 alb)
+vec3 OrenIbar(float ndl, float ndv, float ldv, float r, vec3 alb)
 {
     vec2 LV = max(vec2(ndl, ndv), 0.0001);
     r = max(r*r,0.001);
  
     //Primary diffuse term
-    vec2 ab = vec2(0.25+0.2*r,0.25) / r;
+    vec2 ab = vec2(0.125+0.17*r,0.125) / r;
     vec2 f = ab.x*LV / (ab.y+LV);
-    float OI_S = LV.x*f.x*f.y / (LV.x*LV.y);
+    float OI_S = f.x*f.y / (LV.y);
     
-    //Multiscattering, approximate SSS baked in
-    float ML = 0.83 * LV.x / (0.25 + LV.x); 
-    vec3 OI_MS = ML*OI_MS_Approx(ndv,r) * (0.5+0.5*alb / (2.0 - alb));
+    //Multiscattering
+    vec3 OI_MS = LV.x*OI_MS_Approx(ndv,r) * (0.5+0.5*alb / (2.0 - alb));
     
-    return OI_S + OI_MS;
+    float RR = mix(1.0, 0.75 / pow(1.25 - ldv, 1.5), pow(1.0 - ndv,5.0) );
+    
+    return vec3(0) + OI_S + OI_MS * RR; 
 }
